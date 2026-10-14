@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggles = {
         dislikesEnabled: document.getElementById('dislikeToggle'),
         shortsEnabled: document.getElementById('shortsToggle'),
+        playablesEnabled: document.getElementById('playablesToggle'),
         focusEnabled: document.getElementById('focusToggle'),
         sponsorEnabled: document.getElementById('sponsorToggle'),
         autoHDEnabled: document.getElementById('autoHDToggle'),
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chrome.storage.local.get({
         globalEnabled: true,
-        dislikesEnabled: true, shortsEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
+        dislikesEnabled: true, shortsEnabled: true, playablesEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
         customSpeed: 1.0, volumeLevel: 100
     }, (result) => {
         globalToggle.checked = result.globalEnabled;
@@ -64,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
         chrome.storage.local.set({ [key]: value });
         chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
             if (tabs[0] && tabs[0].url && tabs[0].url.includes("youtube.com")) {
-                // Add callback to suppress "Could not establish connection" error 
                 chrome.tabs.sendMessage(tabs[0].id, { action: actionName, state: value }, (response) => {
                     if (chrome.runtime.lastError) {
                         console.log("[YT Refined] Waiting for page to load or content script is missing.");

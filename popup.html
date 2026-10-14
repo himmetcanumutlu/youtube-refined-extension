@@ -16,6 +16,9 @@
         .github-link:hover { color: var(--text-main); transform: scale(1.1); }
         .github-link svg { width: 20px; height: 20px; fill: currentColor; }
         
+        .global-toggle-container { background-color: rgba(33, 33, 33, 0.7); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; backdrop-filter: blur(10px); }
+        .global-text { font-size: 14px; font-weight: 600; color: #fff; }
+        
         .container { padding: 20px; transition: opacity 0.3s ease, filter 0.3s ease; }
         .frozen { opacity: 0.3; pointer-events: none; filter: grayscale(100%); }
 
@@ -68,6 +71,11 @@
         </div>
     </div>
     
+    <div class="global-toggle-container">
+        <span class="global-text">Extension Enabled</span>
+        <label class="switch"><input type="checkbox" id="globalToggle_dummy" style="display:none;" disabled></label>
+    </div>
+    
     <div id="settingsContainer" class="container">
         <div class="section">
             <div class="section-title">Media Controls</div>
@@ -103,6 +111,10 @@
             <div class="setting-row">
                 <span>Shorts Hider</span>
                 <label class="switch"><input type="checkbox" id="shortsToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Playables Hider</span>
+                <label class="switch"><input type="checkbox" id="playablesToggle"><span class="slider"></span></label>
             </div>
             <div class="setting-row">
                 <span>Focus Mode</span>
