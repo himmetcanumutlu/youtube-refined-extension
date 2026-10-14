@@ -9,7 +9,6 @@ class YouTubeEnhancer {
         this.initStates();
     }
 
-    // Inject external script to comply with Manifest V3 CSP
     injectMainWorldScript() {
         if (document.getElementById('yt-refined-inject')) return;
         const script = document.createElement('script');
@@ -51,6 +50,7 @@ class YouTubeEnhancer {
             }
             else if (request.action === "toggle_dislikesEnabled") { this.settings.dislikesEnabled = request.state; this.handleDislikeUI(); }
             else if (request.action === "toggle_shortsEnabled") { this.settings.shortsEnabled = request.state; this.handleShortsUI(); }
+            else if (request.action === "toggle_playablesEnabled") { this.settings.playablesEnabled = request.state; this.handlePlayablesUI(); }
             else if (request.action === "toggle_focusEnabled") { this.settings.focusEnabled = request.state; this.handleFocusUI(); }
             else if (request.action === "toggle_sponsorEnabled") { this.settings.sponsorEnabled = request.state; this.initSponsorBlock(); }
             else if (request.action === "toggle_autoHDEnabled") { this.settings.autoHDEnabled = request.state; this.applyAutoHD(); }
@@ -58,14 +58,14 @@ class YouTubeEnhancer {
             else if (request.action === "set_customSpeed") { this.settings.customSpeed = request.state; this.applySpeed(); }
             else if (request.action === "set_volumeLevel") { this.settings.volumeLevel = request.state; this.applyVolume(); }
             
-            sendResponse({status: "success"}); // Acknowledge message receipt
+            sendResponse({status: "success"});
         });
     }
 
     initStates() {
         chrome.storage.local.get({
             globalEnabled: true,
-            dislikesEnabled: true, shortsEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
+            dislikesEnabled: true, shortsEnabled: true, playablesEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
             customSpeed: 1.0, volumeLevel: 100
         }, (result) => {
             this.settings = result;
@@ -88,6 +88,7 @@ class YouTubeEnhancer {
 
     handleAllFeatures() {
         this.handleShortsUI();
+        this.handlePlayablesUI();
         this.handleFocusUI();
         this.handleDislikeUI();
         this.applySpeed();
@@ -150,8 +151,31 @@ class YouTubeEnhancer {
     }
 
     handleShortsUI() {
-        if (this.settings.globalEnabled && this.settings.shortsEnabled) this.injectCSS('yt-shorts-hider', `ytd-reel-shelf-renderer, ytd-rich-shelf-renderer[is-shorts], ytd-mini-guide-entry-renderer[aria-label="Shorts"], ytd-guide-entry-renderer:has(a[title="Shorts"]), ytd-grid-video-renderer:has(a[href^="/shorts/"]), ytd-rich-item-renderer:has(a[href^="/shorts/"]), ytd-video-renderer:has(a[href^="/shorts/"]) { display: none !important; }`);
+        if (this.settings.globalEnabled && this.settings.shortsEnabled) this.injectCSS('yt-shorts-hider', `
+            ytd-reel-shelf-renderer, 
+            ytd-rich-shelf-renderer[is-shorts], 
+            ytd-mini-guide-entry-renderer[aria-label="Shorts"], 
+            ytd-guide-entry-renderer:has(a[title="Shorts"]), 
+            ytd-grid-video-renderer:has(a[href^="/shorts/"]), 
+            ytd-rich-item-renderer:has(a[href^="/shorts/"]), 
+            ytd-video-renderer:has(a[href^="/shorts/"]) { display: none !important; }
+        `);
         else this.removeCSS('yt-shorts-hider');
+    }
+
+    handlePlayablesUI() {
+        if (this.settings.globalEnabled && this.settings.playablesEnabled) {
+            // Targets the Playables shelf on homepage and navigation links
+            this.injectCSS('yt-playables-hider', `
+                ytd-rich-section-renderer:has(a[href^="/playables/"]),
+                ytd-guide-entry-renderer:has(a[href^="/playables/"]),
+                ytd-mini-guide-entry-renderer[aria-label="Playables"] {
+                    display: none !important;
+                }
+            `);
+        } else {
+            this.removeCSS('yt-playables-hider');
+        }
     }
 
     injectCSS(id, cssRules) {
@@ -224,25 +248,34 @@ class YouTubeEnhancer {
             
             let num = data.dislikes;
             let formatted = num.toString();
-            if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
-            else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+            if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0\$/, '') + 'M';
+            else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0\$/, '') + 'K';
 
             if (this.dislikeObserver) this.dislikeObserver.disconnect();
+            
             this.dislikeObserver = new MutationObserver((mutations, obs) => {
-                const container = document.querySelector('dislike-button-view-model') || document.querySelector('.ytd-menu-renderer button[aria-label*="Dislike"]');
+                const container = document.querySelector('ytd-watch-metadata dislike-button-view-model button') || 
+                                  document.querySelector('#actions dislike-button-view-model button') ||
+                                  document.querySelector('#top-level-buttons-computed dislike-button-view-model button');
+
                 if (container) {
-                    const existingCounter = document.getElementById('custom-dislike-counter');
-                    if (existingCounter) existingCounter.remove();
+                    if (document.getElementById('custom-dislike-counter')) {
+                        obs.disconnect();
+                        return;
+                    }
                     if (!this.settings.globalEnabled || !this.settings.dislikesEnabled) return;
 
                     const span = document.createElement('span');
                     span.id = 'custom-dislike-counter';
                     span.innerText = formatted;
-                    span.style.cssText = `font-size: 1.4rem; line-height: 2rem; font-weight: 500; font-family: "Roboto", "Arial", sans-serif; margin: 0 6px; color: var(--yt-spec-text-primary); display: inline-block; vertical-align: middle;`;
+                    span.style.cssText = `font-size: 1.4rem; line-height: 2rem; font-weight: 500; font-family: "Roboto", "Arial", sans-serif; margin-left: 6px; margin-right: 6px; color: var(--yt-spec-text-primary); display: inline-block; vertical-align: middle;`;
 
-                    const btnContent = container.querySelector('.yt-spec-button-shape-next__button-text-content') || container;
-                    if (btnContent !== container) btnContent.parentNode.insertBefore(span, btnContent.nextSibling);
-                    else container.appendChild(span);
+                    const btnContent = container.querySelector('.yt-spec-button-shape-next__button-text-content');
+                    if (btnContent) {
+                        btnContent.parentNode.insertBefore(span, btnContent.nextSibling);
+                    } else {
+                        container.appendChild(span);
+                    }
                     
                     obs.disconnect();
                 }
