@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <style>
+        :root { --bg-color: #0f0f0f; --panel-bg: #1a1a1a; --text-main: #ffffff; --text-muted: #aaaaaa; --accent: #ff0000; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; width: 320px; padding: 0; margin: 0; background-color: var(--bg-color); color: var(--text-main); user-select: none; }
+        
+        .header { background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .header-left h3 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: 0.5px; }
+        
+        .header-right { display: flex; align-items: center; gap: 14px; }
+        .github-link { color: var(--text-muted); transition: all 0.2s ease; display: flex; align-items: center; text-decoration: none; }
+        .github-link:hover { color: var(--text-main); transform: scale(1.1); }
+        .github-link svg { width: 20px; height: 20px; fill: currentColor; }
+        
+        .global-toggle-container { background-color: rgba(33, 33, 33, 0.7); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; backdrop-filter: blur(10px); }
+        .global-text { font-size: 14px; font-weight: 600; color: #fff; }
+        
+        .container { padding: 20px; transition: opacity 0.3s ease, filter 0.3s ease; }
+        .frozen { opacity: 0.3; pointer-events: none; filter: grayscale(100%); }
+
+        .section-title { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 16px; letter-spacing: 1.5px; border-bottom: 1px solid #222; padding-bottom: 6px; }
+        .section { margin-bottom: 24px; }
+        .section:last-child { margin-bottom: 0; }
+        
+        .setting-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500; margin-bottom: 16px; transition: color 0.2s; }
+        .setting-row:hover { color: #fff; }
+        .setting-row:last-child { margin-bottom: 0; }
+        
+        .switch { position: relative; display: inline-block; width: 42px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1); border-radius: 24px; border: 1px solid #444; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: #888; transition: .3s cubic-bezier(0.4, 0.0, 0.2, 1); border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        
+        input:checked + .slider { background-color: var(--accent); border-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(18px); background-color: #fff; }
+        
+        .master-switch .slider { background-color: #333; border-color: #444; }
+        .master-switch input:checked + .slider { background-color: #10b981; border-color: #10b981; box-shadow: 0 0 12px rgba(16, 185, 129, 0.3); }
+
+        .range-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+        .range-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 500; }
+        .range-value { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]:focus { outline: none; }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #333; border-radius: 4px; transition: background 0.2s; }
+        input[type=range]:hover::-webkit-slider-runnable-track { background: #444; }
+        input[type=range]::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 50%; background: #ddd; cursor: pointer; -webkit-appearance: none; margin-top: -6px; transition: transform 0.2s, background 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        input[type=range]::-webkit-slider-thumb:hover { background: #fff; transform: scale(1.2); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <h3>YT Refined</h3>
+        </div>
+        <div class="header-right">
+            <a href="https://github.com/himmetcanumutlu" target="_blank" class="github-link" title="Developer Profile">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57C20.565 21.795 24 17.31 24 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+            </a>
+        </div>
+    </div>
+    
+    <div class="global-toggle-container">
+        <span class="global-text">Extension Enabled</span>
+        <label class="switch master-switch" title="Toggle Extension">
+            <input type="checkbox" id="globalToggle">
+            <span class="slider"></span>
+        </label>
+    </div>
+    
+    <div id="settingsContainer" class="container">
+        <div class="section">
+            <div class="section-title">Media Controls</div>
+            <div class="range-container">
+                <div class="range-header"><span>Custom Speed</span><span class="range-value" id="speedValue">1.0x</span></div>
+                <input type="range" id="speedSlider" min="0.25" max="4.0" step="0.25" value="1.0">
+            </div>
+            <div class="range-container">
+                <div class="range-header"><span>Volume Boost</span><span class="range-value" id="volumeValue">100%</span></div>
+                <input type="range" id="volumeSlider" min="100" max="600" step="25" value="100">
+            </div>
+            
+            <div class="setting-row" style="margin-top: 20px;">
+                <span>Auto Max Quality</span>
+                <label class="switch"><input type="checkbox" id="autoHDToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Auto PIP (Background)</span>
+                <label class="switch"><input type="checkbox" id="pipToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Sponsor Skipper</span>
+                <label class="switch"><input type="checkbox" id="sponsorToggle"><span class="slider"></span></label>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Appearance & UI</div>
+            <div class="setting-row">
+                <span>Dislike Counter</span>
+                <label class="switch"><input type="checkbox" id="dislikeToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Shorts Hider</span>
+                <label class="switch"><input type="checkbox" id="shortsToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Playables Hider</span>
+                <label class="switch"><input type="checkbox" id="playablesToggle"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Focus Mode</span>
+                <label class="switch"><input type="checkbox" id="focusToggle"><span class="slider"></span></label>
+            </div>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
