@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize DOM elements
     const globalToggle = document.getElementById('globalToggle');
     const settingsContainer = document.getElementById('settingsContainer');
     const allInputs = settingsContainer.querySelectorAll('input');
@@ -18,48 +19,49 @@ document.addEventListener('DOMContentLoaded', () => {
         volumeLevel: { el: document.getElementById('volumeSlider'), val: document.getElementById('volumeValue'), format: v => v + '%' }
     };
 
+    // Load saved settings from storage and update UI state
     chrome.storage.local.get({
         globalEnabled: true,
-        dislikesEnabled: true, shortsEnabled: true, playablesEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
-        customSpeed: 1.0, volumeLevel: 100
+        dislikesEnabled: true, 
+        shortsEnabled: true, 
+        playablesEnabled: true, 
+        focusEnabled: false, 
+        sponsorEnabled: true, 
+        autoHDEnabled: true, 
+        pipEnabled: false,
+        customSpeed: 1.0, 
+        volumeLevel: 100
     }, (result) => {
-<<<<<<< HEAD
         globalToggle.checked = result.globalEnabled !== false;
         applyFreezeEffect(globalToggle.checked);
 
         Object.keys(toggles).forEach(key => {
             if (toggles[key]) toggles[key].checked = result[key] !== false;
         });
+
         Object.keys(sliders).forEach(key => {
             if (sliders[key].el) {
                 sliders[key].el.value = result[key] || (key === 'customSpeed' ? 1.0 : 100);
                 sliders[key].val.innerText = sliders[key].format(parseFloat(sliders[key].el.value));
             }
-=======
-        globalToggle.checked = result.globalEnabled;
-        applyFreezeEffect(result.globalEnabled);
-
-        Object.keys(toggles).forEach(key => toggles[key].checked = result[key]);
-        Object.keys(sliders).forEach(key => {
-            sliders[key].el.value = result[key];
-            sliders[key].val.innerText = sliders[key].format(result[key]);
->>>>>>> 0cae3d8ccf4b546246bb8349db80a41e6942c6ad
         });
     });
 
+    // Attach event listener for the master extension toggle
     globalToggle.addEventListener('change', () => {
         const isEnabled = globalToggle.checked;
         applyFreezeEffect(isEnabled);
         updateSetting('globalEnabled', isEnabled, 'toggle_globalEnabled');
     });
 
+    // Attach event listeners for individual feature toggles
     Object.keys(toggles).forEach(key => {
-<<<<<<< HEAD
         if (toggles[key]) {
             toggles[key].addEventListener('change', () => updateSetting(key, toggles[key].checked, `toggle_${key}`));
         }
     });
 
+    // Attach event listeners for range sliders
     Object.keys(sliders).forEach(key => {
         if (sliders[key].el) {
             sliders[key].el.addEventListener('input', () => {
@@ -68,19 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSetting(key, val, `set_${key}`);
             });
         }
-=======
-        toggles[key].addEventListener('change', () => updateSetting(key, toggles[key].checked, `toggle_${key}`));
     });
 
-    Object.keys(sliders).forEach(key => {
-        sliders[key].el.addEventListener('input', () => {
-            const val = key === 'customSpeed' ? parseFloat(sliders[key].el.value) : parseInt(sliders[key].el.value);
-            sliders[key].val.innerText = sliders[key].format(val);
-            updateSetting(key, val, `set_${key}`);
-        });
->>>>>>> 0cae3d8ccf4b546246bb8349db80a41e6942c6ad
-    });
-
+    /**
+     * Toggles the interactive state of the settings UI based on global extension status.
+     * @param {boolean} isEnabled - Whether the extension is globally enabled.
+     */
     function applyFreezeEffect(isEnabled) {
         if (isEnabled) {
             settingsContainer.classList.remove('frozen');
@@ -91,19 +86,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Saves a setting to local storage and dispatches the update to the active YouTube tab.
+     * @param {string} key - The storage key.
+     * @param {any} value - The setting value.
+     * @param {string} actionName - The action identifier for the message payload.
+     */
     function updateSetting(key, value, actionName) {
         chrome.storage.local.set({ [key]: value });
-        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0] && tabs[0].url && tabs[0].url.includes("youtube.com")) {
-<<<<<<< HEAD
-                chrome.tabs.sendMessage(tabs[0].id, { action: actionName, state: value }, () => {
-                    if (chrome.runtime.lastError) {}
-=======
                 chrome.tabs.sendMessage(tabs[0].id, { action: actionName, state: value }, (response) => {
                     if (chrome.runtime.lastError) {
                         console.log("[YT Refined] Waiting for page to load or content script is missing.");
                     }
->>>>>>> 0cae3d8ccf4b546246bb8349db80a41e6942c6ad
                 });
             }
         });
