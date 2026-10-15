@@ -10,7 +10,6 @@ class YouTubeEnhancer {
     }
 
     injectMainWorldScript() {
-<<<<<<< HEAD
         try {
             if (document.getElementById('yt-refined-inject')) return;
             const script = document.createElement('script');
@@ -19,14 +18,6 @@ class YouTubeEnhancer {
             script.onload = function() { this.remove(); };
             (document.head || document.documentElement).appendChild(script);
         } catch(e) {}
-=======
-        if (document.getElementById('yt-refined-inject')) return;
-        const script = document.createElement('script');
-        script.id = 'yt-refined-inject';
-        script.src = chrome.runtime.getURL('inject.js');
-        script.onload = function() { this.remove(); };
-        (document.head || document.documentElement).appendChild(script);
->>>>>>> 0cae3d8ccf4b546246bb8349db80a41e6942c6ad
     }
 
     setupListeners() {
@@ -69,11 +60,7 @@ class YouTubeEnhancer {
             else if (request.action === "set_customSpeed") { this.settings.customSpeed = request.state; this.applySpeed(); }
             else if (request.action === "set_volumeLevel") { this.settings.volumeLevel = request.state; this.applyVolume(); }
             
-<<<<<<< HEAD
             sendResponse({status: "ok"});
-=======
-            sendResponse({status: "success"});
->>>>>>> 0cae3d8ccf4b546246bb8349db80a41e6942c6ad
         });
     }
 
@@ -166,71 +153,43 @@ class YouTubeEnhancer {
     }
 
     handleShortsUI() {
-<<<<<<< HEAD
-            if (this.settings.globalEnabled && this.settings.shortsEnabled) {
-                this.injectCSS('yt-shorts-hider', `
-                    /* Sadece Ana Sayfadaki Shorts raflarını ve videolarını gizler */
-                    ytd-rich-shelf-renderer[is-shorts], 
-                    ytd-rich-item-renderer:has(a[href*="/shorts/"]),
-                    
-                    /* Sadece Sol menüdeki Shorts butonlarını gizler */
-                    ytd-mini-guide-entry-renderer[aria-label="Shorts"], 
-                    ytd-guide-entry-renderer:has(a[title="Shorts"]) { 
-                        display: none !important; 
-                    }
-                    /* Arama sonuçlarına (ytd-video-renderer, ytd-reel-shelf-renderer) KESİNLİKLE DOKUNMAZ */
-                `);
-            } else {
-                this.removeCSS('yt-shorts-hider');
-            }
+        if (this.settings.globalEnabled && this.settings.shortsEnabled) {
+            this.injectCSS('yt-shorts-hider', `
+                /* Hides Shorts shelves and videos exclusively on the homepage. */
+                ytd-rich-shelf-renderer[is-shorts], 
+                ytd-rich-item-renderer:has(a[href*="/shorts/"]),
+                
+                /* Hides Shorts buttons within the side navigation menu. */
+                ytd-mini-guide-entry-renderer[aria-label="Shorts"], 
+                ytd-guide-entry-renderer:has(a[title="Shorts"]) { 
+                    display: none !important; 
+                }
+                
+                /* Ensures search results (e.g., ytd-video-renderer, ytd-reel-shelf-renderer) remain completely unaffected. */
+            `);
+        } else {
+            this.removeCSS('yt-shorts-hider');
         }
-
-    handlePlayablesUI() {
-            if (this.settings.globalEnabled && this.settings.playablesEnabled) {
-                // Ana sayfa, arama sonuçları ve yan menülerdeki Playables panellerini tamamen yok eder
-                this.injectCSS('yt-playables-hider', `
-                    ytd-rich-section-renderer:has(a[href*="/playables"]),
-                    ytd-item-section-renderer:has(a[href*="/playables"]),
-                    ytd-shelf-renderer:has(a[href*="/playables"]),
-                    ytd-horizontal-card-list-renderer:has(a[href*="/playables"]),
-                    ytd-guide-entry-renderer:has(a[href*="/playables"]),
-                    ytd-mini-guide-entry-renderer:has(a[href*="/playables"]),
-                    ytd-mini-guide-entry-renderer[aria-label*="Playables"] { 
-                        display: none !important; 
-                    }
-                `);
-            } else {
-                this.removeCSS('yt-playables-hider');
-            }
-        }
-=======
-        if (this.settings.globalEnabled && this.settings.shortsEnabled) this.injectCSS('yt-shorts-hider', `
-            ytd-reel-shelf-renderer, 
-            ytd-rich-shelf-renderer[is-shorts], 
-            ytd-mini-guide-entry-renderer[aria-label="Shorts"], 
-            ytd-guide-entry-renderer:has(a[title="Shorts"]), 
-            ytd-grid-video-renderer:has(a[href^="/shorts/"]), 
-            ytd-rich-item-renderer:has(a[href^="/shorts/"]), 
-            ytd-video-renderer:has(a[href^="/shorts/"]) { display: none !important; }
-        `);
-        else this.removeCSS('yt-shorts-hider');
     }
 
     handlePlayablesUI() {
         if (this.settings.globalEnabled && this.settings.playablesEnabled) {
-            // Targets the Playables shelf on homepage and navigation links
+            // Completely removes Playables sections from the homepage, search results, and navigation menus.
             this.injectCSS('yt-playables-hider', `
-                ytd-rich-section-renderer:has(a[href^="/playables/"]),
-                ytd-guide-entry-renderer:has(a[href^="/playables/"]),
-                ytd-mini-guide-entry-renderer[aria-label="Playables"] {
-                    display: none !important;
+                ytd-rich-section-renderer:has(a[href*="/playables"]),
+                ytd-item-section-renderer:has(a[href*="/playables"]),
+                ytd-shelf-renderer:has(a[href*="/playables"]),
+                ytd-horizontal-card-list-renderer:has(a[href*="/playables"]),
+                ytd-guide-entry-renderer:has(a[href*="/playables"]),
+                ytd-mini-guide-entry-renderer:has(a[href*="/playables"]),
+                ytd-mini-guide-entry-renderer[aria-label*="Playables"] { 
+                    display: none !important; 
                 }
             `);
         } else {
             this.removeCSS('yt-playables-hider');
         }
     }
->>>>>>> 0cae3d8ccf4b546246bb8349db80a41e6942c6ad
 
     injectCSS(id, cssRules) {
         if (document.getElementById(id)) return;
