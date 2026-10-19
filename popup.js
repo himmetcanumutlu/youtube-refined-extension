@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggles = {
         dislikesEnabled: document.getElementById('dislikeToggle'),
         shortsEnabled: document.getElementById('shortsToggle'),
+        sidebarShortsEnabled: document.getElementById('sidebarShortsToggle'), // <-- Bu eksikti, geri eklendi!
         playablesEnabled: document.getElementById('playablesToggle'),
         focusEnabled: document.getElementById('focusToggle'),
         sponsorEnabled: document.getElementById('sponsorToggle'),
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
         globalEnabled: true,
         dislikesEnabled: true, 
         shortsEnabled: true, 
+        sidebarShortsEnabled: true, // <-- Depolama ayarı geri eklendi!
         playablesEnabled: true, 
         focusEnabled: false, 
         sponsorEnabled: true, 
@@ -74,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Toggles the interactive state of the settings UI based on global extension status.
-     * @param {boolean} isEnabled - Whether the extension is globally enabled.
+     * @param {boolean} isEnabled Whether the extension is globally enabled.
      */
     function applyFreezeEffect(isEnabled) {
         if (isEnabled) {
@@ -88,9 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Saves a setting to local storage and dispatches the update to the active YouTube tab.
-     * @param {string} key - The storage key.
-     * @param {any} value - The setting value.
-     * @param {string} actionName - The action identifier for the message payload.
+     * @param {string} key The storage key.
+     * @param {any} value The setting value.
+     * @param {string} actionName The action identifier for the message payload.
      */
     function updateSetting(key, value, actionName) {
         chrome.storage.local.set({ [key]: value });
