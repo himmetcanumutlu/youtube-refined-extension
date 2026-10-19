@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize DOM elements
     const globalToggle = document.getElementById('globalToggle');
     const settingsContainer = document.getElementById('settingsContainer');
     const allInputs = settingsContainer.querySelectorAll('input');
@@ -7,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggles = {
         dislikesEnabled: document.getElementById('dislikeToggle'),
         shortsEnabled: document.getElementById('shortsToggle'),
-        sidebarShortsEnabled: document.getElementById('sidebarShortsToggle'), // <-- Bu eksikti, geri eklendi!
+        sidebarShortsEnabled: document.getElementById('sidebarShortsToggle'), 
         playablesEnabled: document.getElementById('playablesToggle'),
         focusEnabled: document.getElementById('focusToggle'),
         sponsorEnabled: document.getElementById('sponsorToggle'),
@@ -20,12 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
         volumeLevel: { el: document.getElementById('volumeSlider'), val: document.getElementById('volumeValue'), format: v => v + '%' }
     };
 
-    // Load saved settings from storage and update UI state
     chrome.storage.local.get({
         globalEnabled: true,
         dislikesEnabled: true, 
         shortsEnabled: true, 
-        sidebarShortsEnabled: true, // <-- Depolama ayarı geri eklendi!
+        sidebarShortsEnabled: true, 
         playablesEnabled: true, 
         focusEnabled: false, 
         sponsorEnabled: true, 
@@ -49,21 +47,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Attach event listener for the master extension toggle
     globalToggle.addEventListener('change', () => {
         const isEnabled = globalToggle.checked;
         applyFreezeEffect(isEnabled);
         updateSetting('globalEnabled', isEnabled, 'toggle_globalEnabled');
     });
 
-    // Attach event listeners for individual feature toggles
     Object.keys(toggles).forEach(key => {
         if (toggles[key]) {
             toggles[key].addEventListener('change', () => updateSetting(key, toggles[key].checked, `toggle_${key}`));
         }
     });
 
-    // Attach event listeners for range sliders
     Object.keys(sliders).forEach(key => {
         if (sliders[key].el) {
             sliders[key].el.addEventListener('input', () => {
@@ -74,10 +69,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /**
-     * Toggles the interactive state of the settings UI based on global extension status.
-     * @param {boolean} isEnabled Whether the extension is globally enabled.
-     */
     function applyFreezeEffect(isEnabled) {
         if (isEnabled) {
             settingsContainer.classList.remove('frozen');
@@ -88,12 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * Saves a setting to local storage and dispatches the update to the active YouTube tab.
-     * @param {string} key The storage key.
-     * @param {any} value The setting value.
-     * @param {string} actionName The action identifier for the message payload.
-     */
     function updateSetting(key, value, actionName) {
         chrome.storage.local.set({ [key]: value });
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -107,3 +92,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+// Himmet Can Umutlu
+// https://github.com/himmetcanumutlu
