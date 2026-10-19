@@ -52,6 +52,7 @@ class YouTubeEnhancer {
             }
             else if (request.action === "toggle_dislikesEnabled") { this.settings.dislikesEnabled = request.state; this.handleDislikeUI(); }
             else if (request.action === "toggle_shortsEnabled") { this.settings.shortsEnabled = request.state; this.handleShortsUI(); }
+            else if (request.action === "toggle_sidebarShortsEnabled") { this.settings.sidebarShortsEnabled = request.state; this.handleSidebarShortsUI(); }
             else if (request.action === "toggle_playablesEnabled") { this.settings.playablesEnabled = request.state; this.handlePlayablesUI(); }
             else if (request.action === "toggle_focusEnabled") { this.settings.focusEnabled = request.state; this.handleFocusUI(); }
             else if (request.action === "toggle_sponsorEnabled") { this.settings.sponsorEnabled = request.state; this.initSponsorBlock(); }
@@ -67,7 +68,7 @@ class YouTubeEnhancer {
     initStates() {
         chrome.storage.local.get({
             globalEnabled: true,
-            dislikesEnabled: true, shortsEnabled: true, playablesEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
+            dislikesEnabled: true, shortsEnabled: true, sidebarShortsEnabled: true, playablesEnabled: true, focusEnabled: false, sponsorEnabled: true, autoHDEnabled: true, pipEnabled: false,
             customSpeed: 1.0, volumeLevel: 100
         }, (result) => {
             this.settings = result;
@@ -90,6 +91,7 @@ class YouTubeEnhancer {
 
     handleAllFeatures() {
         this.handleShortsUI();
+        this.handleSidebarShortsUI();
         this.handlePlayablesUI();
         this.handleFocusUI();
         this.handleDislikeUI();
@@ -155,26 +157,36 @@ class YouTubeEnhancer {
     handleShortsUI() {
         if (this.settings.globalEnabled && this.settings.shortsEnabled) {
             this.injectCSS('yt-shorts-hider', `
-                /* Hides Shorts shelves and videos exclusively on the homepage. */
+                /* Hides Shorts on Home Page */
                 ytd-rich-shelf-renderer[is-shorts], 
                 ytd-rich-item-renderer:has(a[href*="/shorts/"]),
-                
-                /* Hides Shorts buttons within the side navigation menu. */
+                /* Hides Shorts in Sidebar Navigation */
                 ytd-mini-guide-entry-renderer[aria-label="Shorts"], 
                 ytd-guide-entry-renderer:has(a[title="Shorts"]) { 
                     display: none !important; 
                 }
-                
-                /* Ensures search results (e.g., ytd-video-renderer, ytd-reel-shelf-renderer) remain completely unaffected. */
             `);
         } else {
             this.removeCSS('yt-shorts-hider');
         }
     }
 
+    handleSidebarShortsUI() {
+        if (this.settings.globalEnabled && this.settings.sidebarShortsEnabled) {
+            this.injectCSS('yt-sidebar-shorts-hider', `
+                /* Hides Shorts mixed in the related videos sidebar */
+                #related ytd-reel-shelf-renderer,
+                #related ytd-compact-video-renderer:has(a[href*="/shorts/"]) { 
+                    display: none !important; 
+                }
+            `);
+        } else {
+            this.removeCSS('yt-sidebar-shorts-hider');
+        }
+    }
+
     handlePlayablesUI() {
         if (this.settings.globalEnabled && this.settings.playablesEnabled) {
-            // Completely removes Playables sections from the homepage, search results, and navigation menus.
             this.injectCSS('yt-playables-hider', `
                 ytd-rich-section-renderer:has(a[href*="/playables"]),
                 ytd-item-section-renderer:has(a[href*="/playables"]),
