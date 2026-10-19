@@ -1,4 +1,3 @@
-// Runs in the MAIN world to safely interact with YouTube's APIs without CSP violations
 window.addEventListener('YTRefined_AutoHD', () => {
     try {
         const player = document.getElementById("movie_player");
@@ -17,3 +16,5 @@ window.addEventListener('YTRefined_ForceBackground', () => {
         window.addEventListener('visibilitychange', e => e.stopImmediatePropagation(), true);
     } catch(e) {}
 });
+// Himmet Can Umutlu
+// https://github.com/himmetcanumutlu
