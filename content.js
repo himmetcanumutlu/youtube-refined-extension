@@ -157,10 +157,8 @@ class YouTubeEnhancer {
     handleShortsUI() {
         if (this.settings.globalEnabled && this.settings.shortsEnabled) {
             this.injectCSS('yt-shorts-hider', `
-                /* Hides Shorts on Home Page */
                 ytd-rich-shelf-renderer[is-shorts], 
                 ytd-rich-item-renderer:has(a[href*="/shorts/"]),
-                /* Hides Shorts in Sidebar Navigation */
                 ytd-mini-guide-entry-renderer[aria-label="Shorts"], 
                 ytd-guide-entry-renderer:has(a[title="Shorts"]) { 
                     display: none !important; 
@@ -174,7 +172,6 @@ class YouTubeEnhancer {
     handleSidebarShortsUI() {
         if (this.settings.globalEnabled && this.settings.sidebarShortsEnabled) {
             this.injectCSS('yt-sidebar-shorts-hider', `
-                /* Hides Shorts mixed in the related videos sidebar */
                 #related ytd-reel-shelf-renderer,
                 #related ytd-compact-video-renderer:has(a[href*="/shorts/"]) { 
                     display: none !important; 
@@ -312,3 +309,5 @@ class YouTubeEnhancer {
 }
 
 new YouTubeEnhancer();
+// Himmet Can Umutlu
+// https://github.com/himmetcanumutlu
