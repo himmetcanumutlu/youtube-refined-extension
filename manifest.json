@@ -4,11 +4,16 @@
   "short_name": "Refined",
   "version": "1.6.4",
   "description": "Purify your YouTube experience. Auto HD, SponsorBlock, PIP, Focus Mode, and Advanced Media Controls.",
+  "icons": { "16": "icons/icon_on_16.png", "32": "icons/icon_on_32.png", "48": "icons/icon_on_48.png", "128": "icons/icon_on_128.png" },
   "permissions": ["storage"],
   "host_permissions": ["*://www.youtube.com/*", "https://returnyoutubedislikeapi.com/*", "https://sponsor.ajay.app/*"],
   "action": {
+    "default_icon": { "16": "icons/icon_on_16.png", "32": "icons/icon_on_32.png", "48": "icons/icon_on_48.png", "128": "icons/icon_on_128.png" },
     "default_popup": "popup.html",
     "default_title": "Settings"
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "content_scripts": [
     {
