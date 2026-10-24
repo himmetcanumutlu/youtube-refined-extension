@@ -270,8 +270,8 @@ class YouTubeEnhancer {
             
             let num = data.dislikes;
             let formatted = num.toString();
-            if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0\$/, '') + 'M';
-            else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0\$/, '') + 'K';
+            if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
 
             if (this.dislikeObserver) this.dislikeObserver.disconnect();
             

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "YT Refined",
   "short_name": "Refined",
-  "version": "1.6.2",
+  "version": "1.6.4",
   "description": "Purify your YouTube experience. Auto HD, SponsorBlock, PIP, Focus Mode, and Advanced Media Controls.",
   "permissions": ["activeTab", "storage"],
   "host_permissions": ["*://*.youtube.com/*", "https://returnyoutubedislikeapi.com/*", "https://sponsor.ajay.app/*"],
