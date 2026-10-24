@@ -50,12 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
     globalToggle.addEventListener('change', () => {
         const isEnabled = globalToggle.checked;
         applyFreezeEffect(isEnabled);
-        updateSetting('globalEnabled', isEnabled, 'toggle_globalEnabled');
+        updateSetting('globalEnabled', isEnabled);
     });
 
     Object.keys(toggles).forEach(key => {
         if (toggles[key]) {
-            toggles[key].addEventListener('change', () => updateSetting(key, toggles[key].checked, `toggle_${key}`));
+            toggles[key].addEventListener('change', () => updateSetting(key, toggles[key].checked));
         }
     });
 
@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
             sliders[key].el.addEventListener('input', () => {
                 const val = key === 'customSpeed' ? parseFloat(sliders[key].el.value) : parseInt(sliders[key].el.value);
                 sliders[key].val.innerText = sliders[key].format(val);
-                updateSetting(key, val, `set_${key}`);
+                updateSetting(key, val);
             });
         }
     });
@@ -79,17 +79,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateSetting(key, value, actionName) {
+    // Content scripts in every YouTube tab listen to chrome.storage.onChanged.
+    function updateSetting(key, value) {
         chrome.storage.local.set({ [key]: value });
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0] && tabs[0].url && tabs[0].url.includes("youtube.com")) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: actionName, state: value }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.log("[YT Refined] Waiting for page to load or content script is missing.");
-                    }
-                });
-            }
-        });
     }
 });
 // Himmet Can Umutlu

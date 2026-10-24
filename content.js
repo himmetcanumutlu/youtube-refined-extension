@@ -4,64 +4,48 @@ class YouTubeEnhancer {
         this.audioCtx = null;
         this.gainNode = null;
 
-        this.injectMainWorldScript();
         this.setupListeners();
         this.initStates();
-    }
-
-    injectMainWorldScript() {
-        try {
-            if (document.getElementById('yt-refined-inject')) return;
-            const script = document.createElement('script');
-            script.id = 'yt-refined-inject';
-            script.src = chrome.runtime.getURL('inject.js');
-            script.onload = function() { this.remove(); };
-            (document.head || document.documentElement).appendChild(script);
-        } catch(e) {}
     }
 
     setupListeners() {
         window.addEventListener('yt-navigate-finish', () => this.handleNavigation());
         
+        // A speed change right after a click or key press comes from the user (YouTube menu, Shift + > / <),
+        // so it is respected for the current video. Any other change is YouTube resetting the speed.
+        const markUserInput = () => { this.lastUserInput = Date.now(); };
+        document.addEventListener('pointerdown', markUserInput, true);
+        document.addEventListener('keydown', markUserInput, true);
+
         document.addEventListener('ratechange', (e) => {
-            if (e.target.tagName === 'VIDEO' && this.settings.globalEnabled && this.settings.customSpeed && e.target.playbackRate !== this.settings.customSpeed) {
-                e.target.playbackRate = this.settings.customSpeed;
-            }
+            if (e.target.tagName !== 'VIDEO' || !this.isCustomSpeedActive() || this.userSpeedOverride) return;
+            if (e.target.playbackRate === this.settings.customSpeed) return;
+            if (Date.now() - (this.lastUserInput || 0) < 1000) this.userSpeedOverride = true;
+            else e.target.playbackRate = this.settings.customSpeed;
         }, true);
 
-        document.addEventListener("visibilitychange", async () => {
-            if (!this.settings.globalEnabled || !this.settings.pipEnabled) return;
-            const video = document.querySelector("video");
-            if (!video) return;
+        // Storage is the single source of truth, so every open YouTube tab stays in sync.
+        const handlers = {
+            globalEnabled: () => this.handleAllFeatures(),
+            dislikesEnabled: () => this.handleDislikeUI(),
+            shortsEnabled: () => this.handleShortsUI(),
+            sidebarShortsEnabled: () => this.handleSidebarShortsUI(),
+            playablesEnabled: () => this.handlePlayablesUI(),
+            focusEnabled: () => this.handleFocusUI(),
+            sponsorEnabled: () => this.initSponsorBlock(),
+            autoHDEnabled: () => this.applyAutoHD(),
+            pipEnabled: () => this.applyBackgroundPlayForce(),
+            customSpeed: () => { this.userSpeedOverride = false; this.applySpeed(); },
+            volumeLevel: () => this.applyVolume()
+        };
 
-            if (document.hidden) {
-                if (!video.paused && !document.pictureInPictureElement) {
-                    try { await video.requestPictureInPicture(); } catch (e) {}
-                }
-            } else {
-                if (document.pictureInPictureElement) {
-                    try { await document.exitPictureInPicture(); } catch (e) {}
-                }
-            }
-        });
-
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            if (request.action === "toggle_globalEnabled") { 
-                this.settings.globalEnabled = request.state; 
-                this.handleAllFeatures(); 
-            }
-            else if (request.action === "toggle_dislikesEnabled") { this.settings.dislikesEnabled = request.state; this.handleDislikeUI(); }
-            else if (request.action === "toggle_shortsEnabled") { this.settings.shortsEnabled = request.state; this.handleShortsUI(); }
-            else if (request.action === "toggle_sidebarShortsEnabled") { this.settings.sidebarShortsEnabled = request.state; this.handleSidebarShortsUI(); }
-            else if (request.action === "toggle_playablesEnabled") { this.settings.playablesEnabled = request.state; this.handlePlayablesUI(); }
-            else if (request.action === "toggle_focusEnabled") { this.settings.focusEnabled = request.state; this.handleFocusUI(); }
-            else if (request.action === "toggle_sponsorEnabled") { this.settings.sponsorEnabled = request.state; this.initSponsorBlock(); }
-            else if (request.action === "toggle_autoHDEnabled") { this.settings.autoHDEnabled = request.state; this.applyAutoHD(); }
-            else if (request.action === "toggle_pipEnabled") { this.settings.pipEnabled = request.state; this.applyBackgroundPlayForce(); }
-            else if (request.action === "set_customSpeed") { this.settings.customSpeed = request.state; this.applySpeed(); }
-            else if (request.action === "set_volumeLevel") { this.settings.volumeLevel = request.state; this.applyVolume(); }
-            
-            sendResponse({status: "ok"});
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area !== 'local') return;
+            Object.keys(changes).forEach(key => {
+                if (!(key in handlers)) return;
+                this.settings[key] = changes[key].newValue;
+                handlers[key]();
+            });
         });
     }
 
@@ -78,6 +62,7 @@ class YouTubeEnhancer {
     }
 
     handleNavigation() {
+        this.userSpeedOverride = false;
         if (!this.settings.globalEnabled) return;
         if (this.settings.dislikesEnabled) this.initDislikes();
         if (this.settings.sponsorEnabled) this.initSponsorBlock();
@@ -97,15 +82,13 @@ class YouTubeEnhancer {
         this.handleDislikeUI();
         this.applySpeed();
         this.applyVolume();
-        if(this.settings.globalEnabled) {
-            this.applyBackgroundPlayForce();
-            this.initSponsorBlock();
-        }
+        this.applyBackgroundPlayForce();
+        if (this.settings.globalEnabled) this.initSponsorBlock();
     }
 
     applyBackgroundPlayForce() {
-        if (!this.settings.globalEnabled || !this.settings.pipEnabled) return;
-        window.dispatchEvent(new CustomEvent('YTRefined_ForceBackground'));
+        const enabled = !!(this.settings.globalEnabled && this.settings.pipEnabled);
+        window.dispatchEvent(new CustomEvent('YTRefined_SetBackground', { detail: enabled }));
     }
 
     applyAutoHD() {
@@ -122,10 +105,20 @@ class YouTubeEnhancer {
         window.dispatchEvent(new CustomEvent('YTRefined_AutoHD'));
     }
 
+    isCustomSpeedActive() {
+        return this.settings.globalEnabled && !!this.settings.customSpeed && this.settings.customSpeed !== 1.0;
+    }
+
     applySpeed() {
         const video = document.querySelector('video');
-        if (video) {
-            video.playbackRate = this.settings.globalEnabled ? this.settings.customSpeed : 1.0;
+        if (!video) return;
+        if (this.isCustomSpeedActive()) {
+            if (!this.userSpeedOverride) video.playbackRate = this.settings.customSpeed;
+            this.speedApplied = true;
+        } else if (this.speedApplied) {
+            // Only undo a speed the extension set itself; otherwise leave YouTube's own speed alone.
+            video.playbackRate = 1.0;
+            this.speedApplied = false;
         }
     }
 
@@ -150,8 +143,17 @@ class YouTubeEnhancer {
     }
 
     handleFocusUI() {
-        if (this.settings.globalEnabled && this.settings.focusEnabled) this.injectCSS('yt-focus-mode', `#comments, #secondary { display: none !important; }`);
-        else this.removeCSS('yt-focus-mode');
+        if (this.settings.globalEnabled && this.settings.focusEnabled) {
+            this.injectCSS('yt-focus-mode', `
+                ytd-watch-flexy #comments,
+                ytd-watch-flexy #related,
+                ytd-watch-flexy:not([playlist]) #secondary {
+                    display: none !important;
+                }
+            `);
+        } else {
+            this.removeCSS('yt-focus-mode');
+        }
     }
 
     handleShortsUI() {
@@ -248,63 +250,82 @@ class YouTubeEnhancer {
 
     handleDislikeUI() {
         const counter = document.getElementById('custom-dislike-counter');
-        if (this.settings.globalEnabled && this.settings.dislikesEnabled) {
-            if (!counter) this.initDislikes();
-            else counter.style.display = 'inline-block';
-        } else if (counter) counter.style.display = 'none';
+        if (this.settings.globalEnabled && this.settings.dislikesEnabled) this.initDislikes();
+        else if (counter) counter.style.display = 'none';
     }
-    
+
+    getDislikeButton() {
+        return document.querySelector('ytd-watch-metadata dislike-button-view-model button') ||
+               document.querySelector('#actions dislike-button-view-model button') ||
+               document.querySelector('#top-level-buttons-computed dislike-button-view-model button');
+    }
+
     async initDislikes() {
         if (!window.location.pathname.includes('/watch')) return;
         const videoId = new URLSearchParams(window.location.search).get('v');
         if (!videoId) return;
 
-        if (videoId === this.currentVideoId && document.getElementById('custom-dislike-counter')) {
-            document.getElementById('custom-dislike-counter').style.display = 'inline-block'; return;
-        }
+        // YouTube reuses the dislike button between videos, so a counter from the previous video may still be there.
+        const existing = document.getElementById('custom-dislike-counter');
+        if (existing && existing.dataset.videoId !== videoId) existing.remove();
 
         this.currentVideoId = videoId;
+        if (this.dislikeData && this.dislikeData.videoId === videoId) return this.renderDislikes();
+        if (this.pendingDislikeVideoId === videoId) return;
+
+        this.pendingDislikeVideoId = videoId;
         try {
             const res = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${videoId}`);
             const data = await res.json();
-            
+            if (typeof data.dislikes !== 'number') return;
+
             let num = data.dislikes;
             let formatted = num.toString();
-            if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0\$/, '') + 'M';
-            else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0\$/, '') + 'K';
+            if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
 
-            if (this.dislikeObserver) this.dislikeObserver.disconnect();
-            
-            this.dislikeObserver = new MutationObserver((mutations, obs) => {
-                const container = document.querySelector('ytd-watch-metadata dislike-button-view-model button') || 
-                                  document.querySelector('#actions dislike-button-view-model button') ||
-                                  document.querySelector('#top-level-buttons-computed dislike-button-view-model button');
+            this.dislikeData = { videoId, formatted };
+            if (this.currentVideoId === videoId) this.renderDislikes();
+        } catch (error) {
+        } finally {
+            if (this.pendingDislikeVideoId === videoId) this.pendingDislikeVideoId = null;
+        }
+    }
 
-                if (container) {
-                    if (document.getElementById('custom-dislike-counter')) {
-                        obs.disconnect();
-                        return;
-                    }
-                    if (!this.settings.globalEnabled || !this.settings.dislikesEnabled) return;
+    renderDislikes() {
+        if (this.dislikeObserver) this.dislikeObserver.disconnect();
 
-                    const span = document.createElement('span');
-                    span.id = 'custom-dislike-counter';
-                    span.innerText = formatted;
-                    span.style.cssText = `font-size: 1.4rem; line-height: 2rem; font-weight: 500; font-family: "Roboto", "Arial", sans-serif; margin-left: 6px; margin-right: 6px; color: var(--yt-spec-text-primary); display: inline-block; vertical-align: middle;`;
+        const render = () => {
+            const data = this.dislikeData;
+            if (!data || data.videoId !== this.currentVideoId) return true;
+            const container = this.getDislikeButton();
+            if (!container) return false;
+            if (!this.settings.globalEnabled || !this.settings.dislikesEnabled) return true;
 
-                    const btnContent = container.querySelector('.yt-spec-button-shape-next__button-text-content');
-                    if (btnContent) {
-                        btnContent.parentNode.insertBefore(span, btnContent.nextSibling);
-                    } else {
-                        container.appendChild(span);
-                    }
-                    
-                    obs.disconnect();
+            let span = document.getElementById('custom-dislike-counter');
+            if (!span) {
+                span = document.createElement('span');
+                span.id = 'custom-dislike-counter';
+                span.style.cssText = `font-size: 1.4rem; line-height: 2rem; font-weight: 500; font-family: "Roboto", "Arial", sans-serif; margin-left: 6px; margin-right: 6px; color: var(--yt-spec-text-primary); display: inline-block; vertical-align: middle;`;
+
+                const btnContent = container.querySelector('.yt-spec-button-shape-next__button-text-content');
+                if (btnContent) {
+                    btnContent.parentNode.insertBefore(span, btnContent.nextSibling);
+                } else {
+                    container.appendChild(span);
                 }
-            });
-            this.dislikeObserver.observe(document.body, { childList: true, subtree: true });
-            
-        } catch (error) {}
+            }
+            span.dataset.videoId = data.videoId;
+            span.innerText = data.formatted;
+            span.style.display = 'inline-block';
+            return true;
+        };
+
+        if (render()) return;
+        this.dislikeObserver = new MutationObserver((mutations, obs) => {
+            if (render()) obs.disconnect();
+        });
+        this.dislikeObserver.observe(document.body, { childList: true, subtree: true });
     }
 }
 
