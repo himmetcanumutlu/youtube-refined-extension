@@ -11,10 +11,17 @@ class YouTubeEnhancer {
     setupListeners() {
         window.addEventListener('yt-navigate-finish', () => this.handleNavigation());
         
+        // A speed change right after a click or key press comes from the user (YouTube menu, Shift + > / <),
+        // so it is respected for the current video. Any other change is YouTube resetting the speed.
+        const markUserInput = () => { this.lastUserInput = Date.now(); };
+        document.addEventListener('pointerdown', markUserInput, true);
+        document.addEventListener('keydown', markUserInput, true);
+
         document.addEventListener('ratechange', (e) => {
-            if (e.target.tagName === 'VIDEO' && this.settings.globalEnabled && this.settings.customSpeed && e.target.playbackRate !== this.settings.customSpeed) {
-                e.target.playbackRate = this.settings.customSpeed;
-            }
+            if (e.target.tagName !== 'VIDEO' || !this.isCustomSpeedActive() || this.userSpeedOverride) return;
+            if (e.target.playbackRate === this.settings.customSpeed) return;
+            if (Date.now() - (this.lastUserInput || 0) < 1000) this.userSpeedOverride = true;
+            else e.target.playbackRate = this.settings.customSpeed;
         }, true);
 
         // Storage is the single source of truth, so every open YouTube tab stays in sync.
@@ -28,7 +35,7 @@ class YouTubeEnhancer {
             sponsorEnabled: () => this.initSponsorBlock(),
             autoHDEnabled: () => this.applyAutoHD(),
             pipEnabled: () => this.applyBackgroundPlayForce(),
-            customSpeed: () => this.applySpeed(),
+            customSpeed: () => { this.userSpeedOverride = false; this.applySpeed(); },
             volumeLevel: () => this.applyVolume()
         };
 
@@ -55,6 +62,7 @@ class YouTubeEnhancer {
     }
 
     handleNavigation() {
+        this.userSpeedOverride = false;
         if (!this.settings.globalEnabled) return;
         if (this.settings.dislikesEnabled) this.initDislikes();
         if (this.settings.sponsorEnabled) this.initSponsorBlock();
@@ -97,10 +105,20 @@ class YouTubeEnhancer {
         window.dispatchEvent(new CustomEvent('YTRefined_AutoHD'));
     }
 
+    isCustomSpeedActive() {
+        return this.settings.globalEnabled && !!this.settings.customSpeed && this.settings.customSpeed !== 1.0;
+    }
+
     applySpeed() {
         const video = document.querySelector('video');
-        if (video) {
-            video.playbackRate = this.settings.globalEnabled ? this.settings.customSpeed : 1.0;
+        if (!video) return;
+        if (this.isCustomSpeedActive()) {
+            if (!this.userSpeedOverride) video.playbackRate = this.settings.customSpeed;
+            this.speedApplied = true;
+        } else if (this.speedApplied) {
+            // Only undo a speed the extension set itself; otherwise leave YouTube's own speed alone.
+            video.playbackRate = 1.0;
+            this.speedApplied = false;
         }
     }
 
@@ -232,63 +250,82 @@ class YouTubeEnhancer {
 
     handleDislikeUI() {
         const counter = document.getElementById('custom-dislike-counter');
-        if (this.settings.globalEnabled && this.settings.dislikesEnabled) {
-            if (!counter) this.initDislikes();
-            else counter.style.display = 'inline-block';
-        } else if (counter) counter.style.display = 'none';
+        if (this.settings.globalEnabled && this.settings.dislikesEnabled) this.initDislikes();
+        else if (counter) counter.style.display = 'none';
     }
-    
+
+    getDislikeButton() {
+        return document.querySelector('ytd-watch-metadata dislike-button-view-model button') ||
+               document.querySelector('#actions dislike-button-view-model button') ||
+               document.querySelector('#top-level-buttons-computed dislike-button-view-model button');
+    }
+
     async initDislikes() {
         if (!window.location.pathname.includes('/watch')) return;
         const videoId = new URLSearchParams(window.location.search).get('v');
         if (!videoId) return;
 
-        if (videoId === this.currentVideoId && document.getElementById('custom-dislike-counter')) {
-            document.getElementById('custom-dislike-counter').style.display = 'inline-block'; return;
-        }
+        // YouTube reuses the dislike button between videos, so a counter from the previous video may still be there.
+        const existing = document.getElementById('custom-dislike-counter');
+        if (existing && existing.dataset.videoId !== videoId) existing.remove();
 
         this.currentVideoId = videoId;
+        if (this.dislikeData && this.dislikeData.videoId === videoId) return this.renderDislikes();
+        if (this.pendingDislikeVideoId === videoId) return;
+
+        this.pendingDislikeVideoId = videoId;
         try {
             const res = await fetch(`https://returnyoutubedislikeapi.com/votes?videoId=${videoId}`);
             const data = await res.json();
-            
+            if (typeof data.dislikes !== 'number') return;
+
             let num = data.dislikes;
             let formatted = num.toString();
             if (num >= 1000000) formatted = (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
             else if (num >= 1000) formatted = (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
 
-            if (this.dislikeObserver) this.dislikeObserver.disconnect();
-            
-            this.dislikeObserver = new MutationObserver((mutations, obs) => {
-                const container = document.querySelector('ytd-watch-metadata dislike-button-view-model button') || 
-                                  document.querySelector('#actions dislike-button-view-model button') ||
-                                  document.querySelector('#top-level-buttons-computed dislike-button-view-model button');
+            this.dislikeData = { videoId, formatted };
+            if (this.currentVideoId === videoId) this.renderDislikes();
+        } catch (error) {
+        } finally {
+            if (this.pendingDislikeVideoId === videoId) this.pendingDislikeVideoId = null;
+        }
+    }
 
-                if (container) {
-                    if (document.getElementById('custom-dislike-counter')) {
-                        obs.disconnect();
-                        return;
-                    }
-                    if (!this.settings.globalEnabled || !this.settings.dislikesEnabled) return;
+    renderDislikes() {
+        if (this.dislikeObserver) this.dislikeObserver.disconnect();
 
-                    const span = document.createElement('span');
-                    span.id = 'custom-dislike-counter';
-                    span.innerText = formatted;
-                    span.style.cssText = `font-size: 1.4rem; line-height: 2rem; font-weight: 500; font-family: "Roboto", "Arial", sans-serif; margin-left: 6px; margin-right: 6px; color: var(--yt-spec-text-primary); display: inline-block; vertical-align: middle;`;
+        const render = () => {
+            const data = this.dislikeData;
+            if (!data || data.videoId !== this.currentVideoId) return true;
+            const container = this.getDislikeButton();
+            if (!container) return false;
+            if (!this.settings.globalEnabled || !this.settings.dislikesEnabled) return true;
 
-                    const btnContent = container.querySelector('.yt-spec-button-shape-next__button-text-content');
-                    if (btnContent) {
-                        btnContent.parentNode.insertBefore(span, btnContent.nextSibling);
-                    } else {
-                        container.appendChild(span);
-                    }
-                    
-                    obs.disconnect();
+            let span = document.getElementById('custom-dislike-counter');
+            if (!span) {
+                span = document.createElement('span');
+                span.id = 'custom-dislike-counter';
+                span.style.cssText = `font-size: 1.4rem; line-height: 2rem; font-weight: 500; font-family: "Roboto", "Arial", sans-serif; margin-left: 6px; margin-right: 6px; color: var(--yt-spec-text-primary); display: inline-block; vertical-align: middle;`;
+
+                const btnContent = container.querySelector('.yt-spec-button-shape-next__button-text-content');
+                if (btnContent) {
+                    btnContent.parentNode.insertBefore(span, btnContent.nextSibling);
+                } else {
+                    container.appendChild(span);
                 }
-            });
-            this.dislikeObserver.observe(document.body, { childList: true, subtree: true });
-            
-        } catch (error) {}
+            }
+            span.dataset.videoId = data.videoId;
+            span.innerText = data.formatted;
+            span.style.display = 'inline-block';
+            return true;
+        };
+
+        if (render()) return;
+        this.dislikeObserver = new MutationObserver((mutations, obs) => {
+            if (render()) obs.disconnect();
+        });
+        this.dislikeObserver.observe(document.body, { childList: true, subtree: true });
     }
 }
 
