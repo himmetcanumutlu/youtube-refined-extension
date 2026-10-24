@@ -45,23 +45,28 @@ class YouTubeEnhancer {
             }
         });
 
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            if (request.action === "toggle_globalEnabled") { 
-                this.settings.globalEnabled = request.state; 
-                this.handleAllFeatures(); 
-            }
-            else if (request.action === "toggle_dislikesEnabled") { this.settings.dislikesEnabled = request.state; this.handleDislikeUI(); }
-            else if (request.action === "toggle_shortsEnabled") { this.settings.shortsEnabled = request.state; this.handleShortsUI(); }
-            else if (request.action === "toggle_sidebarShortsEnabled") { this.settings.sidebarShortsEnabled = request.state; this.handleSidebarShortsUI(); }
-            else if (request.action === "toggle_playablesEnabled") { this.settings.playablesEnabled = request.state; this.handlePlayablesUI(); }
-            else if (request.action === "toggle_focusEnabled") { this.settings.focusEnabled = request.state; this.handleFocusUI(); }
-            else if (request.action === "toggle_sponsorEnabled") { this.settings.sponsorEnabled = request.state; this.initSponsorBlock(); }
-            else if (request.action === "toggle_autoHDEnabled") { this.settings.autoHDEnabled = request.state; this.applyAutoHD(); }
-            else if (request.action === "toggle_pipEnabled") { this.settings.pipEnabled = request.state; this.applyBackgroundPlayForce(); }
-            else if (request.action === "set_customSpeed") { this.settings.customSpeed = request.state; this.applySpeed(); }
-            else if (request.action === "set_volumeLevel") { this.settings.volumeLevel = request.state; this.applyVolume(); }
-            
-            sendResponse({status: "ok"});
+        // Storage is the single source of truth, so every open YouTube tab stays in sync.
+        const handlers = {
+            globalEnabled: () => this.handleAllFeatures(),
+            dislikesEnabled: () => this.handleDislikeUI(),
+            shortsEnabled: () => this.handleShortsUI(),
+            sidebarShortsEnabled: () => this.handleSidebarShortsUI(),
+            playablesEnabled: () => this.handlePlayablesUI(),
+            focusEnabled: () => this.handleFocusUI(),
+            sponsorEnabled: () => this.initSponsorBlock(),
+            autoHDEnabled: () => this.applyAutoHD(),
+            pipEnabled: () => this.applyBackgroundPlayForce(),
+            customSpeed: () => this.applySpeed(),
+            volumeLevel: () => this.applyVolume()
+        };
+
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area !== 'local') return;
+            Object.keys(changes).forEach(key => {
+                if (!(key in handlers)) return;
+                this.settings[key] = changes[key].newValue;
+                handlers[key]();
+            });
         });
     }
 
