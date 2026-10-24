@@ -150,8 +150,17 @@ class YouTubeEnhancer {
     }
 
     handleFocusUI() {
-        if (this.settings.globalEnabled && this.settings.focusEnabled) this.injectCSS('yt-focus-mode', `#comments, #secondary { display: none !important; }`);
-        else this.removeCSS('yt-focus-mode');
+        if (this.settings.globalEnabled && this.settings.focusEnabled) {
+            this.injectCSS('yt-focus-mode', `
+                ytd-watch-flexy #comments,
+                ytd-watch-flexy #related,
+                ytd-watch-flexy:not([playlist]) #secondary {
+                    display: none !important;
+                }
+            `);
+        } else {
+            this.removeCSS('yt-focus-mode');
+        }
     }
 
     handleShortsUI() {
