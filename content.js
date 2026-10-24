@@ -4,20 +4,8 @@ class YouTubeEnhancer {
         this.audioCtx = null;
         this.gainNode = null;
 
-        this.injectMainWorldScript();
         this.setupListeners();
         this.initStates();
-    }
-
-    injectMainWorldScript() {
-        try {
-            if (document.getElementById('yt-refined-inject')) return;
-            const script = document.createElement('script');
-            script.id = 'yt-refined-inject';
-            script.src = chrome.runtime.getURL('inject.js');
-            script.onload = function() { this.remove(); };
-            (document.head || document.documentElement).appendChild(script);
-        } catch(e) {}
     }
 
     setupListeners() {
@@ -28,22 +16,6 @@ class YouTubeEnhancer {
                 e.target.playbackRate = this.settings.customSpeed;
             }
         }, true);
-
-        document.addEventListener("visibilitychange", async () => {
-            if (!this.settings.globalEnabled || !this.settings.pipEnabled) return;
-            const video = document.querySelector("video");
-            if (!video) return;
-
-            if (document.hidden) {
-                if (!video.paused && !document.pictureInPictureElement) {
-                    try { await video.requestPictureInPicture(); } catch (e) {}
-                }
-            } else {
-                if (document.pictureInPictureElement) {
-                    try { await document.exitPictureInPicture(); } catch (e) {}
-                }
-            }
-        });
 
         // Storage is the single source of truth, so every open YouTube tab stays in sync.
         const handlers = {
@@ -102,15 +74,13 @@ class YouTubeEnhancer {
         this.handleDislikeUI();
         this.applySpeed();
         this.applyVolume();
-        if(this.settings.globalEnabled) {
-            this.applyBackgroundPlayForce();
-            this.initSponsorBlock();
-        }
+        this.applyBackgroundPlayForce();
+        if (this.settings.globalEnabled) this.initSponsorBlock();
     }
 
     applyBackgroundPlayForce() {
-        if (!this.settings.globalEnabled || !this.settings.pipEnabled) return;
-        window.dispatchEvent(new CustomEvent('YTRefined_ForceBackground'));
+        const enabled = !!(this.settings.globalEnabled && this.settings.pipEnabled);
+        window.dispatchEvent(new CustomEvent('YTRefined_SetBackground', { detail: enabled }));
     }
 
     applyAutoHD() {
